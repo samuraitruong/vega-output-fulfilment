@@ -1,5 +1,4 @@
 import { ProcessedRow } from '@/types/fide';
-import AccuracyIndicator from './AccuracyIndicator';
 import LoadingSpinner from './LoadingSpinner';
 
 const FideDataCell = ({ row, isLoading }: { row: ProcessedRow; isLoading: boolean }) => {
@@ -7,18 +6,18 @@ const FideDataCell = ({ row, isLoading }: { row: ProcessedRow; isLoading: boolea
         return <LoadingSpinner />;
     }
 
-    if (!row.fideData || row.fideData.length === 0) {
-      return <span className="text-gray-500 italic">No results</span>;
+    // If the match is not accurate, or if there is no data, display a clean message.
+    if (!row.isAccurate || !row.fideData || row.fideData.length === 0) {
+      return <span className="text-gray-500 italic">No accurate match found</span>;
     }
 
-    // For accurate matches, show only 1 record
-    const playersToShow = row.isAccurate ? row.fideData.slice(0, 1) : row.fideData.slice(0, 3);
+    // Since the match is accurate, we are guaranteed to have a best player.
+    // We will display only this single, accurate result.
+    const player = row.fideData[0];
     
     return (
       <div className="space-y-2">
-        <AccuracyIndicator isAccurate={row.isAccurate} searchOrder={row.searchOrder} />
-        {playersToShow.map((player, playerIndex) => (
-          <div key={playerIndex} className="text-sm bg-blue-50 p-2 rounded border border-blue-200">
+        <div key={player.fideId} className="text-sm bg-blue-50 p-2 rounded border border-blue-200">
             <div className="text-gray-900">
               <strong>{player.name}</strong> 
               <span className="text-blue-700"> ({player.federation})</span>
@@ -38,13 +37,7 @@ const FideDataCell = ({ row, isLoading }: { row: ProcessedRow; isLoading: boolea
               Rapid: <span className="font-medium">{player.rapid || 'Unrated'}</span> | 
               Blitz: <span className="font-medium">{player.blitz || 'Unrated'}</span>
             </div>
-          </div>
-        ))}
-        {!row.isAccurate && row.fideData.length > 3 && (
-          <div className="text-xs text-gray-600 font-medium">
-            +{row.fideData.length - 3} more results
-          </div>
-        )}
+        </div>
       </div>
     );
 };

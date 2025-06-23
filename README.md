@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FIDE Player Data Processor
 
-## Getting Started
+A simple web tool for processing chess player lists and fetching their FIDE ratings.
 
-First, run the development server:
+## Features
+- Paste or open a tab-separated list of players (from Excel or similar)
+- Fetches Standard, Rapid, and Blitz FIDE ratings for each player
+- Displays results in a table with per-row loading indicators
+- "Sync Back" updates the textbox with tab-separated results (ready for re-processing)
+- "Copy" provides a space-aligned, pretty table for pasting elsewhere
+- Supports concurrent lookups for faster processing
+- Caches FIDE lookups locally for the current month
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Usage
+1. **Paste or Open File**: Paste your player list (tab-separated) or use the "Open File" button to load a `.txt` file.
+2. **Process**: Click "Process" to fetch FIDE ratings. Each row will show a loading spinner until complete.
+3. **Sync Back**: Click "Sync Back" to update the textbox with the results (tab-separated, ready for re-processing).
+4. **Copy**: Click "Copy" to copy a space-aligned table for easy pasting into emails or documents.
+5. **Force Refresh**: Use this to bypass the cache and fetch fresh data from FIDE.
+
+## Input Format
+- The first row must be headers (e.g., `FirstName`, `LastName`, etc.)
+- Columns must be tab-separated (as from Excel's "Copy" or a TSV file)
+- Example:
+
+```
+#   TicketType   FirstName   LastName
+1   U10 Girls    Kaylin      Zhang
+2   U10 Girls    Lana        Ram
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development
+- Built with Next.js and React
+- All FIDE lookups are done client-side via a CORS proxy
+- No server-side code required for deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Enjoy fast, accurate FIDE data processing for your chess events!**

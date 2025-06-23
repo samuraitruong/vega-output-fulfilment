@@ -214,22 +214,37 @@ export function findNameFields(row: Record<string, string>) {
 };
 
 export function formatOutputText(processedRows: ProcessedRow[], headers: string[], ratingType: 'standard' | 'rapid' | 'blitz'): string {
-    const outputLines = [];
-    
-    // Add header line, including the new "FRtg" column
-    const newHeaders = [...headers, 'FRtg'];
-    outputLines.push(newHeaders.join('\t'));
-    
-    // Add data rows
-    processedRows.forEach(row => {
-        // Find the best player match (the first one, as they are pre-sorted)
-        const bestPlayer = row.fideData;
-        const rating = bestPlayer ? bestPlayer[ratingType] : '';
-        const frtgValue = rating && rating.trim() !== '' ? rating : '0';
+    // 1. Prepare all data as strings, including the header row
+    const allRows: string[][] = [];
+    const headerRow = [...headers];
+    if (!headerRow.includes('FRtg')) headerRow.push('FRtg');
+    allRows.push(headerRow);
 
-        const lineData = [...headers.map(header => row[header] || ''), frtgValue];
-        outputLines.push(lineData.join('\t'));
+    processedRows.forEach(row => {
+        const rowArr = headers.map(h => {
+            const val = row[h];
+            if (typeof val === 'string' || typeof val === 'number') return String(val);
+            return '';
+        });
+        // Add the rating column
+        let rating = '';
+        if (row.fideData) {
+            rating = row.fideData[ratingType] || '';
+        }
+        rowArr.push(rating);
+        allRows.push(rowArr);
     });
-    
+
+    // 2. Calculate max width for each column
+    const colWidths = allRows[0].map((_, colIdx) => {
+        return Math.max(...allRows.map(row => (row[colIdx] ?? '').toString().length));
+    });
+
+    // 3. Build output lines with padding and 4 spaces between columns
+    const pad = (str: string, len: number) => str.padEnd(len, ' ');
+    const outputLines = allRows.map(row =>
+        row.map((cell, i) => pad(String(cell ?? ''), colWidths[i])).join('    ')
+    );
+
     return outputLines.join('\n');
 } 

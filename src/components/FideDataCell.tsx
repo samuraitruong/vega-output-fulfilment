@@ -1,45 +1,32 @@
-import { ProcessedRow } from '@/types/fide';
-import LoadingSpinner from './LoadingSpinner';
+import React from 'react';
+import { FidePlayer } from '@/types/fide';
 
-const FideDataCell = ({ row, isLoading }: { row: ProcessedRow; isLoading: boolean }) => {
-    if (isLoading) {
-        return <LoadingSpinner />;
-    }
+interface FideDataCellProps {
+  player: FidePlayer;
+}
 
-    // If the match is not accurate, or if there is no data, display a clean message.
-    if (!row.isAccurate || !row.fideData || row.fideData.length === 0) {
-      return <span className="text-gray-500 italic">No accurate match found</span>;
-    }
+const FideDataCell: React.FC<FideDataCellProps> = ({ player }) => {
+  if (!player) {
+    return null;
+  }
 
-    // Since the match is accurate, we are guaranteed to have a best player.
-    // We will display only this single, accurate result.
-    const player = row.fideData[0];
-    
-    return (
-      <div className="space-y-2">
-        <div key={player.fideId} className="text-sm bg-blue-50 p-2 rounded border border-blue-200">
-            <div className="text-gray-900">
-              <strong>{player.name}</strong> 
-              <span className="text-blue-700"> ({player.federation})</span>
-              {player.fideId && (
-                <a 
-                  href={`https://ratings.fide.com/profile/${player.fideId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
-                >
-                  ID: {player.fideId}
-                </a>
-              )}
-            </div>
-            <div className="text-gray-700 text-xs mt-1">
-              Standard: <span className="font-medium">{player.standard || 'Unrated'}</span> | 
-              Rapid: <span className="font-medium">{player.rapid || 'Unrated'}</span> | 
-              Blitz: <span className="font-medium">{player.blitz || 'Unrated'}</span>
-            </div>
-        </div>
+  const { name, federation, birthYear, title, standard, rapid, blitz } = player;
+
+  const getRatingDisplay = (rating: string) => rating || <span className="text-gray-400">Unrated</span>;
+
+  return (
+    <div className="text-xs">
+      <div className="font-bold text-gray-800">{name} ({federation})</div>
+      <div className="text-gray-600">
+        Born: {birthYear}, Title: {title || 'None'}
       </div>
-    );
+      <div>
+        Std: <strong>{getRatingDisplay(standard)}</strong>, 
+        Rpd: <strong>{getRatingDisplay(rapid)}</strong>, 
+        Blz: <strong>{getRatingDisplay(blitz)}</strong>
+      </div>
+    </div>
+  );
 };
 
 export default FideDataCell; 

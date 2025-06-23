@@ -19,13 +19,9 @@ export interface InputRow {
 }
 
 export interface ProcessedRow {
-    id: string;
-    ticketType?: string;
-    firstName: string;
-    lastName: string;
-    fideData?: FidePlayer[];
-    searchTerm?: string;
-    isAccurate?: boolean;
+    [key: string]: string | FidePlayer | boolean | number | undefined;
+    fideData?: FidePlayer;
     searchOrder?: string;
-    [key: string]: string | FidePlayer[] | boolean | undefined;
+    isAccurate?: boolean;
+    originalIndex: number;
 } 

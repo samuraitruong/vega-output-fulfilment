@@ -17,13 +17,24 @@ export const useFileLoader = () => {
             }
             const fileContent = await response.text();
             setText(fileContent);
-        } catch (err: any) {
+        } catch (err) {
             console.error(`Failed to load file from ${filePath}:`, err);
-            setError(err.message || 'An unknown error occurred');
+            setError((err as Error).message || 'An unknown error occurred');
         } finally {
             setIsLoading(false);
         }
     }, []);
 
-    return { text, setText, loadFile, isLoading, error };
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e: ProgressEvent<FileReader>) => {
+                setText((e.target as FileReader).result as string);
+            };
+            reader.readAsText(file);
+        }
+    };
+
+    return { text, setText, loadFile, isLoading, error, handleFileChange };
 }; 

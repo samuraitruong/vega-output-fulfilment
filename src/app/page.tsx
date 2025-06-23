@@ -1,278 +1,277 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { parseInputText, searchFidePlayer, formatOutputText, findNameKeys } from '@/utils/fideParser';
 import { ProcessedRow } from '@/types/fide';
-import { parseInputText, processRowsInParallel, formatOutputText, findNameFields } from '@/utils/fideParser';
-import { useFileLoader } from '@/hooks/useFileLoader';
+import { cleanupOldCache } from '@/utils/cache';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import FideDataCell from '@/components/FideDataCell';
 
 export default function Home() {
-  const { text: inputText, setText: setInputText, loadFile } = useFileLoader();
-  const [processedRows, setProcessedRows] = useState<ProcessedRow[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
+  const [inputText, setInputText] = useState('');
+  const [processedData, setProcessedData] = useState<ProcessedRow[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [outputText, setOutputText] = useState('');
-  const [concurrency, setConcurrency] = useState(4);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [concurrency, setConcurrency] = useState(5);
   const [loadingRows, setLoadingRows] = useState<Set<number>>(new Set());
   const [ratingType, setRatingType] = useState<'standard' | 'rapid' | 'blitz'>('standard');
+  const [showCopyTooltip, setShowCopyTooltip] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load sample data on component mount
   useEffect(() => {
-    loadFile('/sample.txt');
-  }, [loadFile]);
-
-  const handleUpdate = async () => {
-    if (!inputText.trim()) return;
-    
-    setIsProcessing(true);
-    setLoadingRows(new Set());
-    
-    try {
-      const { headers: parsedHeaders, rows } = parseInputText(inputText);
-      setHeaders(parsedHeaders);
-      
-      // Initialize table immediately with empty data
-      const initialProcessed: ProcessedRow[] = rows.map((row) => {
-        const { firstName, lastName } = findNameFields(row);
-        
-        return {
-          ...row,
-          searchTerm: firstName && lastName ? `${firstName} ${lastName}` : '',
-          fideData: []
-        };
-      });
-      
-      setProcessedRows(initialProcessed);
-      
-      // Set the loading state for all rows that are about to be processed.
-      setLoadingRows(new Set(rows.map((r, i) => i)));
-      
-      // Process with progress callback
-      const processed = await processRowsInParallel(
-        rows, 
-        concurrency,
-        (index, result) => {
-          // Update individual row as it completes
-          setProcessedRows(prev => {
-            const updated = [...prev];
-            updated[index] = {
-              ...updated[index],
-              fideData: result.players,
-              isAccurate: result.isAccurate,
-              searchOrder: result.searchOrder
-            };
-            return updated;
-          });
-          
-          // Remove from loading set
-          setLoadingRows(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(index);
-            return newSet;
-          });
+    cleanupOldCache();
+    const loadSample = async () => {
+      try {
+        const response = await fetch('/sample.txt');
+        if (response.ok) {
+          const text = await response.text();
+          setInputText(text);
         }
-      );
-      
-      setProcessedRows(processed);
-    } catch (error) {
-      console.error('Error processing data:', error);
-    } finally {
-      setIsProcessing(false);
-      setLoadingRows(new Set());
+      } catch (error) {
+        console.error("Failed to load sample file:", error);
+      }
+    };
+    loadSample();
+  }, []);
+
+  const handleFileSelectClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setInputText(text);
+      };
+      reader.readAsText(file);
     }
+  };
+
+  const handleProcessClick = async ({ forceRefresh = false }: { forceRefresh?: boolean }) => {
+    setIsProcessing(true);
+    const { headers: parsedHeaders, rows } = parseInputText(inputText);
+    setHeaders(parsedHeaders);
+    const { firstNameKey, lastNameKey } = findNameKeys(parsedHeaders);
+
+    const initialData: ProcessedRow[] = rows.map((row, index) => ({
+      ...row,
+      originalIndex: index,
+    }));
+    setProcessedData(initialData);
+    setLoadingRows(new Set(rows.map((_, index) => index)));
+
+    const BATCH_SIZE = concurrency;
+    const chunks = [];
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      chunks.push(rows.slice(i, i + BATCH_SIZE).map((row, j) => ({ row, index: i + j })));
+    }
+
+    for (const chunk of chunks) {
+      await Promise.all(chunk.map(async ({ row, index }) => {
+        const firstName = firstNameKey ? row[firstNameKey] : undefined;
+        const lastName = lastNameKey ? row[lastNameKey] : undefined;
+
+        let processedResult;
+        if (firstName || lastName) {
+          const searchTerm = [lastName, firstName].filter(Boolean).join(', ');
+          const { players, isAccurate, searchOrder } = await searchFidePlayer(searchTerm, { forceRefresh });
+          processedResult = {
+            fideData: isAccurate && players.length > 0 ? players[0] : undefined,
+            isAccurate,
+            searchOrder,
+          };
+        } else {
+          processedResult = { fideData: undefined, isAccurate: false, searchOrder: 'Name not found' };
+        }
+        
+        setProcessedData(prev => prev.map(pRow =>
+          pRow.originalIndex === index ? { ...pRow, ...processedResult } : pRow
+        ));
+        
+        setLoadingRows(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(index);
+          return newSet;
+        });
+      }));
+    }
+
+    setIsProcessing(false);
+  };
+
+  const handleCopyToClipboard = () => {
+    const outputText = formatOutputText(processedData, headers, ratingType);
+    navigator.clipboard.writeText(outputText);
+    setShowCopyTooltip(true);
+    setTimeout(() => setShowCopyTooltip(false), 2000); // Hide after 2 seconds
   };
 
   const handleSyncBack = () => {
-    const output = formatOutputText(processedRows, headers, ratingType);
-    setOutputText(output);
+    const outputText = formatOutputText(processedData, headers, ratingType);
+    setInputText(outputText);
   };
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(outputText);
-      alert('Copied to clipboard!');
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
-  };
-
-  const getCellValue = (row: ProcessedRow, header: string): string => {
+  const getHeaderValue = (header: string, row: ProcessedRow) => {
     const value = row[header];
     return typeof value === 'string' ? value : '';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">FIDE Data Processor</h1>
-        
-        {/* Input Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">Input Data</h2>
-          <div className="mb-2">
-            <p className="text-sm text-gray-600 mb-2">
-              Paste your tab-separated data here. The format should be: ID | Ticket Type | First Name | Last Name
-            </p>
-            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded border">
-              <strong>Example format:</strong><br/>
-              #	Ticket Type	First Name	Last Name<br/>
-              1	U10 Girls	Kaylin	Zhang<br/>
-              2	U10 Girls	Lana	Ram
+    <div className="min-h-screen bg-gray-100">
+       <header className="bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="w-24"></div> 
+            <div className="flex-1 text-center">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+                FIDE Player Data Processor
+              </h1>
             </div>
-          </div>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Paste your tab-separated data here..."
-            className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 font-mono text-sm leading-relaxed"
-            style={{ 
-              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-              whiteSpace: 'pre',
-              tabSize: 2
-            }}
-          />
-          <div className="mt-4 flex gap-4 items-center">
-            <button
-              onClick={handleUpdate}
-              disabled={isProcessing || !inputText.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-            >
-              {isProcessing ? 'Processing...' : 'Update'}
-            </button>
-            
-            <button
-              onClick={() => loadFile('/sample.txt')}
-              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
-            >
-              Load Sample
-            </button>
-
-            <button
-              onClick={() => setInputText('')}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-            >
-              Clear
-            </button>
-            
-            <div className="flex items-center gap-2">
-              <label htmlFor="concurrency" className="text-sm font-medium text-gray-700">
-                Concurrency:
-              </label>
-              <select
-                id="concurrency"
-                value={concurrency}
-                onChange={(e) => setConcurrency(Number(e.target.value))}
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
-                disabled={isProcessing}
+            <div className="w-24 flex justify-end">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".txt,.text"
+              />
+              <button
+                onClick={handleFileSelectClick}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium text-sm cursor-pointer"
               >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-                <option value={4}>4</option>
-                <option value={5}>5</option>
-                <option value={6}>6</option>
-                <option value={8}>8</option>
-                <option value={10}>10</option>
-              </select>
+                Open File
+              </button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Results Section */}
-        {processedRows.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">Results</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    {headers.map((header, index) => (
-                      <th key={index} className="border border-gray-300 px-4 py-2 text-left text-gray-900 font-semibold">
-                        {header}
-                      </th>
-                    ))}
-                    <th className="border border-gray-300 px-4 py-2 text-left text-gray-900 font-semibold">FIDE Data</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {processedRows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-gray-50">
-                      {headers.map((header, colIndex) => (
-                        <td key={colIndex} className="border border-gray-300 px-4 py-2 text-gray-900">
-                          {getCellValue(row, header)}
-                        </td>
-                      ))}
-                      <td className="border border-gray-300 px-4 py-2">
-                        <FideDataCell row={row} isLoading={loadingRows.has(rowIndex)} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+      <main className="p-4 sm:p-6 md:p-8">
+        <div className="z-10 w-full max-w-7xl mx-auto items-start justify-between font-mono text-sm lg:flex flex-col">
+          <textarea
+            className="w-full h-64 p-4 mb-4 bg-slate-50 border border-slate-300 text-slate-800 placeholder-slate-500 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="Paste your tab-separated player data here or open a file..."
+          />
 
-        {/* Output Section */}
-        {processedRows.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">Output Data</h2>
-            
-            <div className="flex items-center gap-6 mb-4">
-                <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Rating Type:</span>
-                    <div className="flex gap-4">
-                        <label className="flex items-center gap-1 text-gray-800">
-                            <input type="radio" value="standard" checked={ratingType === 'standard'} onChange={() => setRatingType('standard')} />
-                            Standard
-                        </label>
-                        <label className="flex items-center gap-1 text-gray-800">
-                            <input type="radio" value="rapid" checked={ratingType === 'rapid'} onChange={() => setRatingType('rapid')} />
-                            Rapid
-                        </label>
-                        <label className="flex items-center gap-1 text-gray-800">
-                            <input type="radio" value="blitz" checked={ratingType === 'blitz'} onChange={() => setRatingType('blitz')} />
-                            Blitz
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex gap-4 mb-4">
-              <button
-                onClick={handleSyncBack}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-              >
-                Sync Back
-              </button>
-              <button
-                onClick={handleCopy}
-                disabled={!outputText}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-              >
-                Copy
-              </button>
-              <button
-                onClick={() => setOutputText('')}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-              >
-                Clear Output
-              </button>
-            </div>
-            <textarea
-              value={outputText}
-              onChange={(e) => setOutputText(e.target.value)}
-              placeholder="Output data will appear here after clicking 'Sync Back'"
-              className="w-full h-32 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 font-mono text-sm leading-relaxed"
-              style={{ 
-                fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                whiteSpace: 'pre',
-                tabSize: 2
-              }}
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => handleProcessClick({ forceRefresh: false })}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400 cursor-pointer disabled:cursor-not-allowed"
+              disabled={isProcessing || !inputText}
+            >
+              {isProcessing ? <LoadingSpinner /> : 'Process'}
+            </button>
+            <button
+              onClick={() => handleProcessClick({ forceRefresh: true })}
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400 cursor-pointer disabled:cursor-not-allowed"
+              disabled={isProcessing || !inputText}
+            >
+              Force Refresh
+            </button>
+            <label htmlFor="concurrency" className="text-sm font-medium text-gray-700">
+              Concurrency:
+            </label>
+            <input
+              id="concurrency"
+              type="range"
+              min="1"
+              max="10"
+              value={concurrency}
+              onChange={(e) => setConcurrency(parseInt(e.target.value, 10))}
+              className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
             />
+            <span className="text-sm font-medium text-gray-700">{concurrency}</span>
           </div>
-        )}
-      </div>
+
+          {(processedData.length > 0 || isProcessing) && (
+            <div className="w-full mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Processed Data</h2>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">Rating to Sync:</span>
+                    <select
+                      value={ratingType}
+                      onChange={(e) => setRatingType(e.target.value as 'standard' | 'rapid' | 'blitz')}
+                      className="px-3 py-1 bg-slate-50 border border-slate-300 text-slate-800 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="rapid">Rapid</option>
+                      <option value="blitz">Blitz</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleSyncBack}
+                    className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium cursor-pointer"
+                  >
+                    Sync Back
+                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={handleCopyToClipboard}
+                      className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 font-medium cursor-pointer"
+                    >
+                      Copy
+                    </button>
+                    {showCopyTooltip && (
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg">
+                        Copied!
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto bg-white rounded-lg shadow">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {headers.map((header) => (
+                        <th
+                          key={header}
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {header}
+                        </th>
+                      ))}
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        FIDE Data
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {processedData.map((row) => (
+                      <tr key={row.originalIndex}>
+                        {headers.map((header) => (
+                          <td key={header} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {getHeaderValue(header, row)}
+                          </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {loadingRows.has(row.originalIndex) ? (
+                              <LoadingSpinner />
+                          ) : (
+                            row.fideData ? <FideDataCell player={row.fideData} /> : null
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

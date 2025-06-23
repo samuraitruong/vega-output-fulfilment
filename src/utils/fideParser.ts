@@ -1,4 +1,5 @@
 import { FidePlayer, ProcessedRow } from '@/types/fide';
+import { getCache, setCache } from './cache';
 
 export function parseFideTable(html: string): FidePlayer[] {
     if (typeof window === "undefined" || !window.DOMParser) {
@@ -34,71 +35,77 @@ export function parseFideTable(html: string): FidePlayer[] {
     return players;
 }
 
-export async function searchFidePlayer(searchTerm: string): Promise<{ players: FidePlayer[], isAccurate: boolean, searchOrder: string }> {
-    
-    // Helper function to perform a single FIDE search and return players if found.
-    const performFideSearch = async (term: string): Promise<FidePlayer[] | null> => {
-        console.log("term", term)
-        const url = `https://ratings.fide.com/incl_search_l.php?search=${encodeURIComponent(term)}&simple=1`;
-        const response = await fetch('https://no-cors.fly.dev/cors/' + url, { 
-            headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+async function performFideSearch(searchTerm: string): Promise<FidePlayer[] | null> {
+    const url = `https://ratings.fide.com/incl_search_l.php?search=${encodeURIComponent(searchTerm)}&simple=1`;
+    try {
+        const response = await fetch('https://no-cors.fly.dev/cors/' + url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
 
-        if (response.ok) {
-            const html = await response.text();
-            const players = parseFideTable(html);
-            if (players.length > 0) {
-                return players;
-            }
+        if (!response.ok) {
+            console.error(`FIDE search failed with status: ${response.status}`);
+            return null;
         }
+        const html = await response.text();
+        const players = parseFideTable(html);
+        return players.length > 0 ? players : null;
+    } catch (error) {
+        console.error('Error fetching FIDE data:', error);
         return null;
     }
+}
 
-    // Helper to determine if a result is considered "accurate".
-    const checkAccuracy = (players: FidePlayer[]) => {
-        const ausPlayers = players.filter(p => p.federation === 'AUS');
-        return ausPlayers.length > 0 || players.length === 1;
+export async function searchFidePlayer(
+    searchTerm: string,
+    options: { forceRefresh?: boolean } = {}
+): Promise<{ players: FidePlayer[], isAccurate: boolean, searchOrder: string }> {
+    const { forceRefresh = false } = options;
+
+    if (!forceRefresh) {
+        const cachedResult = getCache<{ players: FidePlayer[], isAccurate: boolean, searchOrder: string }>(searchTerm);
+        if (cachedResult) {
+            return { ...cachedResult, searchOrder: `${cachedResult.searchOrder} (cached)` };
+        }
     }
 
+    const checkAccuracy = (players: FidePlayer[]) => {
+        if (players.length === 0) return false;
+        if (players.length === 1) return true;
+        return players.some(p => p.federation === 'AUS');
+    };
+
+    const searchAttempts = [
+        { term: searchTerm, order: 'lastName, firstName' },
+        { term: searchTerm.split(',').reverse().join(' ').trim(), order: 'firstName lastName (reversed)' }
+    ];
+
     try {
-        // First try: The default search term (e.g., "Lastname, Firstname")
-        let players = await performFideSearch(searchTerm);
-        if (players) {
-            return {
-                players,
-                isAccurate: checkAccuracy(players),
-                searchOrder: 'lastName, firstName'
-            };
-        }
-        
-        // Second try: The reverse order (e.g., "Firstname Lastname")
-        const nameParts = searchTerm.split(' ');
-        if (nameParts.length >= 2) {
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ');
-            const reversedSearchTerm = `${lastName}, ${firstName}`;
-            
-            players = await performFideSearch(reversedSearchTerm);
+        for (const attempt of searchAttempts) {
+            const players = await performFideSearch(attempt.term);
             if (players) {
-                return {
+                const result = {
                     players,
                     isAccurate: checkAccuracy(players),
-                    searchOrder: 'firstName lastName (reversed)'
+                    searchOrder: attempt.order
                 };
+                // Don't cache inaccurate results to allow for re-tries
+                if (result.isAccurate) {
+                    setCache(searchTerm, result);
+                }
+                return result;
             }
         }
         
-        // If both attempts fail, return no results.
-        return { players: [], isAccurate: false, searchOrder: 'none' };
-        
+        return { players: [], isAccurate: false, searchOrder: 'No results found' };
+
     } catch (error) {
-        console.error('Error searching FIDE player:', error);
-        return { players: [], isAccurate: false, searchOrder: 'error' };
+        console.error(`Error searching for ${searchTerm}:`, error);
+        return { players: [], isAccurate: false, searchOrder: 'Error' };
     }
 }
 
 export async function processRowsInParallel(
-    rows: any[], 
+    rows: Record<string, string>[], 
     concurrency: number = 4,
     onProgress?: (index: number, result: { players: FidePlayer[], isAccurate: boolean, searchOrder: string }) => void
 ): Promise<ProcessedRow[]> {
@@ -106,13 +113,14 @@ export async function processRowsInParallel(
     
     // Initialize all rows with empty data first
     for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+        const row: Record<string, string> = { id: (i + 1).toString() };
         const { firstName, lastName } = findNameFields(row);
         
         processed.push({
             ...row,
             searchTerm: firstName && lastName ? `${firstName} ${lastName}` : '',
-            fideData: []
+            fideData: undefined,
+            originalIndex: i
         });
     }
 
@@ -124,17 +132,21 @@ export async function processRowsInParallel(
             const { firstName, lastName } = findNameFields(row);
             
             if (firstName && lastName) {
-                let searchTerm = `${lastName}, ${firstName}`;
-                let result = await searchFidePlayer(searchTerm);
-                if(result.players.length ==0) {
-                 result = await searchFidePlayer(`${firstName}, ${lastName}`);
+                const searchTerm1 = `${lastName}, ${firstName}`;
+                let result = await searchFidePlayer(searchTerm1);
+                let usedSearchTerm = searchTerm1;
+                if (result.players.length === 0) {
+                    const searchTerm2 = `${firstName}, ${lastName}`;
+                    result = await searchFidePlayer(searchTerm2);
+                    usedSearchTerm = searchTerm2;
                 }
                 processed[actualIndex] = {
                     ...row,
-                    searchTerm,
-                    fideData: result.players,
+                    searchTerm: usedSearchTerm,
+                    fideData: result.players.length > 0 ? result.players[0] : undefined,
                     isAccurate: result.isAccurate,
-                    searchOrder: result.searchOrder
+                    searchOrder: result.searchOrder,
+                    originalIndex: actualIndex
                 };
                 
                 // Call progress callback
@@ -150,54 +162,58 @@ export async function processRowsInParallel(
     return processed;
 }
 
-export function parseInputText(text: string): { headers: string[], rows: any[] } {
+export function findNameKeys(headers: string[]): { firstNameKey?: string, lastNameKey?: string } {
+    let firstNameKey: string | undefined;
+    let lastNameKey: string | undefined;
+
+    for (const header of headers) {
+        const normalized = header.toLowerCase().replace(/\s/g, '');
+        if (normalized.startsWith('firstname')) {
+            firstNameKey = header;
+        }
+        if (normalized.startsWith('lastname')) {
+            lastNameKey = header;
+        }
+    }
+    
+    // Fallback for a single "Name" column
+    if (!firstNameKey && !lastNameKey) {
+        for (const header of headers) {
+            const normalized = header.toLowerCase().replace(/\s/g, '');
+            if (normalized === 'name') {
+                lastNameKey = header; // Treat it as the main name field
+                break;
+            }
+        }
+    }
+    
+    return { firstNameKey, lastNameKey };
+}
+
+export function parseInputText(text: string): { headers: string[], rows: Record<string, string>[] } {
     const lines = text.trim().split('\n');
     if (lines.length < 1) {
         return { headers: [], rows: [] };
     }
-
-    // 1. Analyze the header to find the start of each column based on its text.
-    const headerLine = lines[0];
-    const headerCells = headerLine.split('\t');
-    const headerConfig: { name: string, index: number }[] = [];
-    headerCells.forEach((h, i) => {
-        const name = h.trim();
-        if (name) {
-            headerConfig.push({ name, index: i });
-        }
-    });
-    
-    const displayHeaders = headerConfig.map(h => h.name);
-
-    // 2. Parse data rows by slicing between the header start indices.
-    const rows = lines.slice(1).map((line, index) => {
-        const dataCells = line.split('\t');
-        const row: any = { id: (index + 1).toString() };
-
-        for (let i = 0; i < headerConfig.length; i++) {
-            const currentHeader = headerConfig[i];
-            const nextHeader = headerConfig[i + 1];
-
-            const startIndex = currentHeader.index;
-            const endIndex = nextHeader ? nextHeader.index : dataCells.length;
-
-            const value = dataCells.slice(startIndex, endIndex).join(' ').trim();
-            row[currentHeader.name] = value;
-        }
-        
+    const headers = lines[0].split(/\t+/).map(h => h.trim());
+    const rows: Record<string, string>[] = lines.slice(1).map(line => {
+        const cells = line.split(/\t+/);
+        const row: Record<string, string> = {};
+        headers.forEach((header, i) => {
+            row[header] = cells[i] ? cells[i].trim() : '';
+        });
         return row;
     });
-
-    return { headers: displayHeaders, rows };
+    return { headers, rows };
 }
 
-export function findNameFields(row: any) {
+export function findNameFields(row: Record<string, string>) {
     const firstName = row.firstName || row['First Name'] || row['firstname'] || row['first_name'] || row['First'] || row['FirstName'] ||'';
     const lastName = row.lastName || row['Last Name'] || row['lastname'] || row['last_name'] || row['Last'] || row['LastName'] ||'';
     return { firstName, lastName };
 };
 
-export function formatOutputText(processedRows: any[], headers: string[], ratingType: 'standard' | 'rapid' | 'blitz'): string {
+export function formatOutputText(processedRows: ProcessedRow[], headers: string[], ratingType: 'standard' | 'rapid' | 'blitz'): string {
     const outputLines = [];
     
     // Add header line, including the new "FRtg" column
@@ -207,7 +223,7 @@ export function formatOutputText(processedRows: any[], headers: string[], rating
     // Add data rows
     processedRows.forEach(row => {
         // Find the best player match (the first one, as they are pre-sorted)
-        const bestPlayer = row.fideData?.[0];
+        const bestPlayer = row.fideData;
         const rating = bestPlayer ? bestPlayer[ratingType] : '';
         const frtgValue = rating && rating.trim() !== '' ? rating : '0';
 

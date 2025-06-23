@@ -213,7 +213,12 @@ export function findNameFields(row: Record<string, string>) {
     return { firstName, lastName };
 };
 
-export function formatOutputText(processedRows: ProcessedRow[], headers: string[], ratingType: 'standard' | 'rapid' | 'blitz'): string {
+export function formatOutputText(
+    processedRows: ProcessedRow[],
+    headers: string[],
+    ratingType: 'standard' | 'rapid' | 'blitz',
+    align: boolean = false
+): string {
     // 1. Prepare all data as strings, including the header row
     const allRows: string[][] = [];
     const headerRow = [...headers];
@@ -235,16 +240,17 @@ export function formatOutputText(processedRows: ProcessedRow[], headers: string[
         allRows.push(rowArr);
     });
 
-    // 2. Calculate max width for each column
-    const colWidths = allRows[0].map((_, colIdx) => {
-        return Math.max(...allRows.map(row => (row[colIdx] ?? '').toString().length));
-    });
-
-    // 3. Build output lines with padding and 4 spaces between columns
-    const pad = (str: string, len: number) => str.padEnd(len, ' ');
-    const outputLines = allRows.map(row =>
-        row.map((cell, i) => pad(String(cell ?? ''), colWidths[i])).join('    ')
-    );
-
-    return outputLines.join('\n');
+    if (align) {
+        // Space-aligned output
+        const colWidths = allRows[0].map((_, colIdx) => {
+            return Math.max(...allRows.map(row => (row[colIdx] ?? '').toString().length));
+        });
+        const pad = (str: string, len: number) => str.padEnd(len, ' ');
+        return allRows.map(row =>
+            row.map((cell, i) => pad(String(cell ?? ''), colWidths[i])).join('    ')
+        ).join('\n');
+    } else {
+        // Tab-separated output
+        return allRows.map(row => row.map(cell => String(cell ?? '')).join('\t')).join('\n');
+    }
 } 

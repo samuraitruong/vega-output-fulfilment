@@ -103,14 +103,14 @@ export default function Home() {
   };
 
   const handleCopyToClipboard = () => {
-    const outputText = formatOutputText(processedData, headers, ratingType);
+    const outputText = formatOutputText(processedData, headers, ratingType, true);
     navigator.clipboard.writeText(outputText);
     setShowCopyTooltip(true);
     setTimeout(() => setShowCopyTooltip(false), 2000); // Hide after 2 seconds
   };
 
   const handleSyncBack = () => {
-    const outputText = formatOutputText(processedData, headers, ratingType);
+    const outputText = formatOutputText(processedData, headers, ratingType, false);
     setInputText(outputText);
   };
 

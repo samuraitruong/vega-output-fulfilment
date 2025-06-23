@@ -1,0 +1,226 @@
+#	TicketType	FirstName		LastName
+1	U10 Girls	Kaylin			Zhang
+2	U10 Girls	Lana			Ram
+3	U10 Girls	Sarah			Zuo
+4	U10 Girls	JAHNAVI			MONDAL
+5	U10 Girls	Joanna			Zhang
+6	U10 Girls	Candice			Fang
+7	U10 Girls	Victoria		Mao
+8	U10 Girls	Eesha			Kappagantula
+9	U10 Girls	Sannah			Bhatia
+10	U10 Girls	Gemma			Chen
+11	U10 Girls	Aanya			Kulasinghe
+12	U10 Open	Rithvik			Vijayakumar
+13	U10 Open	Nate			Wang
+14	U10 Open	Lucas			Parker
+15	U10 Open	Nihal			Shaiek
+16	U10 Open	Naveen			Dissanayake
+17	U10 Open	Sanjay			Krishnan
+18	U10 Open	Sanjit			Krishnan
+19	U10 Open	Ashwin			Ramanathan
+20	U10 Open	Patrick			Kildea
+21	U10 Open	Dev			Sagar
+22	U10 Open	Akain			Jayaweera
+23	U10 Open	Soorya			Balamurugan
+24	U10 Open	Zichen			Zhou
+25	U10 Open	Daelan			Weerakoon
+26	U10 Open	Samuel			ZHANG
+27	U10 Open	Adidev			Sheth
+28	U10 Open	Oscar			Ling
+29	U10 Open	Aavyana			Mahajan
+30	U10 Open	Mel			Li
+31	U10 Open	Ethan			Ma
+32	U10 Open	Leo			Lee
+33	U10 Open	Mantej			Singh
+34	U10 Open	Noah			Wang
+35	U10 Open	Mayukh			Pradeep
+36	U10 Open	Sam			Palta
+37	U10 Open	Derek			Dong
+38	U10 Open	LIKHIL			GOWDA
+39	U10 Open	Aydin			Jinesh
+40	U10 Open	Daanish			Arora
+41	U10 Open	Roland			Luo
+42	U10 Open	Austin			Xu
+43	U10 Open	Nathan			Zhang
+44	U10 Open	Eklavya			Malik
+45	U10 Open	Zenan			Zhou
+46	U10 Open	Theodore		Cifersons
+47	U10 Open	Robert			Rymill
+48	U10 Open	Syon			Arora
+49	U10 Open	Kaisar			Batyrbekov
+50	U10 Open	Lehit Johan		Thankeshavaran
+51	U10 Open	Aarohan			Bhuyan
+52	U10 Open	Bryan			Zhou
+53	U10 Open	Max			Chen
+54	U10 Open	William			Lee
+55	U10 Open	Anishka	Loku 		Narangodage
+56	U10 Open	Vivaan			Verma
+57	U10 Open	Yug			Shinde
+58	U10 Open	Aryan Srivatsav		Yegnavajjula
+59	U10 Open	jayden			fan
+60	U10 Open	Kristian		Loukas
+61	U10 Open	Armaan			Sabharwal
+62	U10 Open	Aaniv			Sood
+63	U10 Open	Lucas			Wei
+64	U10 Open	Wenzhi			Chen
+65	U10 Open	Payas			Shah
+66	U10 Open	Dawid			Sajad
+67	U10 Open	Leo			Leonard
+68	U10 Open	Jaden			Qi
+69	U10 Open	Vinayak			Vinu
+70	U10 Open	Vaishnav		Vinu
+71	U10 Open	Thisuka			De Fonseka
+72	U10 Open	Yu Hin (Casper)		Wong
+73	U10 Open	Oshen			Buddhadasa
+74	U10 Open	Chenxi			Jia
+75	U10 Open	Arjun			Ashok
+76	U10 Open	J M Tisandu Sethwin	Jayasinghe
+77	U10 Open	Daniel			Coralluzzo
+78	U12 Girls	Lamiah			Husain
+79	U12 Girls	Lexi			Ding
+80	U12 Girls	Sophia			Zhang
+81	U12 Girls	Amber			Hou
+82	U12 Girls	Seyedeh Tara		Tavassoli
+83	U12 Girls	Chaithanya Sree		Sridhar
+84	U12 Girls	Amaya			De Silva
+85	U12 Girls	Emma			Zhou
+86	U12 Open	Sumair			Singh
+87	U12 Open	Jayesh			Jaisinghani
+88	U12 Open	Julian			Goh
+89	U12 Open	Logan			Boxshall
+90	U12 Open	Sai Sivesh		Balaji
+91	U12 Open	Darren Ding Xi		Lim
+92	U12 Open	Payne			Lu
+93	U12 Open	James			Kildea
+94	U12 Open	Evan			Sandeep
+95	U12 Open	Joshua			De Saram
+96	U12 Open	Onyx			Jain
+97	U12 Open	Rohan			Ruaya
+98	U12 Open	YIXUAN (Leo)		XU
+99	U12 Open	Nivaan			Nema
+100	U12 Open	oscar			wan
+101	U12 Open	Tuan Kiet		Nguyen
+102	U12 Open	Vivaan			Rawat
+103	U12 Open	Ridam			Barar
+104	U12 Open	Andrew			Wei
+105	U12 Open	AYUSH			DAS
+106	U12 Open	Avinandan		Saha
+107	U12 Open	Anhad			Guraya
+108	U12 Open	Andy			Zhou
+109	U12 Open	Divissha		Sethi
+110	U12 Open	Aryan			Bodke
+111	U12 Open	Evan			Wang
+112	U12 Open	Ishaan			Dev
+113	U12 Open	Jacob			Richardson
+114	U12 Open	Jacob			Watson
+115	U12 Open	Rohan			Majety
+116	U12 Open	Carlos			GUO
+117	U12 Open	Neeraj			Chandran
+118	U12 Open	Gaurish			Jaisinghani
+119	U12 Open	Johan			Stanley
+120	U12 Open	Criswin Joel		Thankeshvaran
+121	U12 Open	Xinyao			Fan
+122	U12 Open	Payne			Lu
+123	U12 Open	Anaadh			Singh
+124	U12 Open	Keanu Stefan		Tham
+125	U12 Open	Krishna Suhaas		Tatavarthy
+126	U12 Open	Tinuka			Liyanage
+127	U12 Open	aiden			fan
+128	U12 Open	William			Luan
+129	U12 Open	Dane			Stockman
+130	U12 Open	Jaden			Chi
+131	U12 Open	Shreyansh		Annadasu
+132	U12 Open	Krithvik		Guggilla
+133	U12 Open	Adrian			Coralluzzo
+134	U12 Open	Arunan			Sivakumar
+135	U12 Open	Vohan			Binduhewa
+136	U12 Open	Sahar			Shirawala
+137	U12 Open	Rushen			Buddhadasa
+138	U14 Girls	Vidushi			Dissanayake
+139	U14 Girls	Shridhar		Wangnekar
+140	U14 Girls	Jisha			Nandi
+141	U14 Girls	Minsadi			Wansapura
+142	U14 Girls	Rita			Liao
+143	U14 Girls	Ariana			Fais
+144	U14 Girls	Rachel			Jiang
+145	U14 Girls	Audrey			GUO
+146	U14 Girls	Hazel Angelica		Menezes
+147	U14 Girls	Luna			Scenna
+148	U14 Girls	Amber			Mao
+149	U14 Open	Nicholas		Goh
+150	U14 Open	Qingnan			Lu
+151	U14 Open	JEREMY			GU
+152	U14 Open	Aarya Madanayakanahalli Gurudath
+153	U14 Open	Nikini			Rajapakse
+154	U14 Open	Donghan			Li
+155	U14 Open	Anh Kiet		Nguyen
+156	U14 Open	Nathaniel		Liu
+157	U14 Open	Ved			Patel
+158	U14 Open	Dulein			Perera
+159	U14 Open	William			Kurganovs
+160	U14 Open	Harry			Nguyen
+161	U14 Open	Carter			Sam
+162	U14 Open	Shahrez			Rana
+163	U14 Open	Shubham			Dhar
+164	U14 Open	Ronnie			Wang
+165	U14 Open	Peter			Hannaford
+166	U14 Open	JoeL			Kandelaars
+167	U14 Open	Avinda			Siriwardana
+168	U14 Open	Christopher		Coralluzzo
+169	U14 Open	Aarya Subramanya	Gadham
+170	U16 Girls	Claire			Marasinghe
+171	U16 Girls	Lara			Ding
+172	U16 Open	Ayden			Tempany
+173	U16 Open	Ishaan			Rai
+174	U16 Open	Robert			Apps
+175	U16 Open	Esteban			Prieto
+176	U16 Open	Devansh			Vashishta
+177	U18 Open	Nachiket		Ramprasad
+178	U18 Open	Alexander 		Horlin Smith
+179	U8 Girls	Daphne			Goh
+180	U8 Girls	Nishitha		Gajula
+181	U8 Girls	Mia			Tan
+182	U8 Girls	Nyra			Venkat
+183	U8 Girls	Arianna Leila		Wang
+184	U8 Girls	Jade			Cabral
+185	U8 Girls	Mishleen		Kaur
+186	U8 Girls	Lori			Jiang
+187	U8 Girls	Mia			Nguyen
+188	U8 Girls	Annie			Liao
+189	U8 Girls	Yvonne			Dong
+190	U8 Girls	Pramiti			Mundra
+191	U8 Girls	stella			xuan
+192	U8 Girls	Advaitha		MADDULURI
+193	U8 Girls	Hoi Ching (Jacey)	Wong
+194	U8 Girls	Diya yashika		Janga
+195	U8 Open		Harry			Li
+196	U8 Open		Ayaansh Ved		Akula
+197	U8 Open		Dev			Manoj
+198	U8 Open		Lionel			Liu
+199	U8 Open		Preston			Liu
+200	U8 Open		Lucas			Tan
+201	U8 Open		Jake			Cabral
+202	U8 Open		Rudra			Sharma
+203	U8 Open		Pratyax SIngh		Rawat
+204	U8 Open		AAYUSH			SAMRAAT
+205	U8 Open		Logan			Lak
+206	U8 Open		Kyrie			Yang
+207	U8 Open		Lucas			Kuyumcian
+208	U8 Open		Mindinu Sasen		Wansapura
+209	U8 Open		Thamoghna		Vemula
+210	U8 Open		TEGVEER SINGH		DHOT
+211	U8 Open		Vivaan			Sethi
+212	U8 Open		Neev	Jyothi 		Nikhil
+213	U8 Open		Ruhaan			Sinha
+214	U8 Open		Ethan			Neo
+215	U8 Open		Mukunth	Ganesh 		Kumar
+216	U8 Open		Aidan			Batyrbekov
+217	U8 Open		Darsh			Patel
+218	U8 Open		Aiden			Yang
+219	U8 Open		Arnav			Dange
+220	U8 Open		lucas			tang
+221	U8 Open		Emerson			Sun
+222	U8 Open		Daniel			Josev-Cussen
+223	U8 Open		Kieran			Rice
+224	U8 Open		Sing Chee		Tan
+225	U8 Open		Ishaan			Menghani

@@ -12,10 +12,11 @@ export default function Home() {
   const [processedData, setProcessedData] = useState<ProcessedRow[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [concurrency, setConcurrency] = useState(5);
+  const [concurrency, setConcurrency] = useState(10);
   const [loadingRows, setLoadingRows] = useState<Set<number>>(new Set());
   const [ratingType, setRatingType] = useState<'standard' | 'rapid' | 'blitz'>('standard');
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
+  const [nameKeys, setNameKeys] = useState<{ firstNameKey?: string; lastNameKey?: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -54,7 +55,8 @@ export default function Home() {
     setIsProcessing(true);
     const { headers: parsedHeaders, rows } = parseInputText(inputText);
     setHeaders(parsedHeaders);
-    const { firstNameKey, lastNameKey } = findNameKeys(parsedHeaders);
+    const foundNameKeys = findNameKeys(parsedHeaders);
+    setNameKeys(foundNameKeys);
 
     const initialData: ProcessedRow[] = rows.map((row, index) => ({
       ...row,
@@ -71,8 +73,8 @@ export default function Home() {
 
     for (const chunk of chunks) {
       await Promise.all(chunk.map(async ({ row, index }) => {
-        const firstName = firstNameKey ? row[firstNameKey] : undefined;
-        const lastName = lastNameKey ? row[lastNameKey] : undefined;
+        const firstName = foundNameKeys.firstNameKey ? row[foundNameKeys.firstNameKey] : undefined;
+        const lastName = foundNameKeys.lastNameKey ? row[foundNameKeys.lastNameKey] : undefined;
 
         let processedResult;
         if (firstName || lastName) {
@@ -117,6 +119,79 @@ export default function Home() {
   const getHeaderValue = (header: string, row: ProcessedRow) => {
     const value = row[header];
     return typeof value === 'string' ? value : '';
+  };
+
+  const handleInvalidateMatch = (rowIndex: number, fideId: string) => {
+    setProcessedData(prev => prev.map(row => {
+      if (row.originalIndex === rowIndex) {
+        // Mark the current match as invalid
+        return {
+          ...row,
+          fideData: undefined,
+          isAccurate: false,
+          searchOrder: 'Marked as invalid'
+        };
+      }
+      return row;
+    }));
+
+    // Trigger a new search for this row to find the next best match
+    const row = processedData.find(r => r.originalIndex === rowIndex);
+    if (!row) return;
+
+    // Get the name fields using the current name keys
+    const firstName = nameKeys.firstNameKey ? String(row[nameKeys.firstNameKey] || '') : '';
+    const lastName = nameKeys.lastNameKey ? String(row[nameKeys.lastNameKey] || '') : '';
+
+    if (firstName || lastName) {
+      setLoadingRows(prev => new Set(prev).add(rowIndex));
+      const searchTerm = [lastName, firstName].filter(Boolean).join(', ');
+      
+      searchFidePlayer(searchTerm, { forceRefresh: true })
+        .then(({ players, isAccurate, searchOrder }) => {
+          // Filter out the previously invalidated player
+          const validPlayers = players.filter(p => p.fideId !== fideId);
+          
+          setProcessedData(prev => prev.map(pRow => {
+            if (pRow.originalIndex === rowIndex) {
+              return {
+                ...pRow,
+                fideData: isAccurate && validPlayers.length > 0 ? validPlayers[0] : undefined,
+                isAccurate: isAccurate && validPlayers.length > 0,
+                searchOrder: validPlayers.length > 0 ? searchOrder : 'No other matches found'
+              };
+            }
+            return pRow;
+          }));
+        })
+        .catch(error => {
+          console.error('Error searching for next match:', error);
+          // Clear loading state even if there's an error
+          setProcessedData(prev => prev.map(pRow => {
+            if (pRow.originalIndex === rowIndex) {
+              return {
+                ...pRow,
+                searchOrder: 'Error finding next match'
+              };
+            }
+            return pRow;
+          }));
+        })
+        .finally(() => {
+          setLoadingRows(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(rowIndex);
+            return newSet;
+          });
+        });
+    } else {
+      // If no name fields are found, clear loading state
+      setLoadingRows(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(rowIndex);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -260,7 +335,14 @@ export default function Home() {
                           {loadingRows.has(row.originalIndex) ? (
                               <LoadingSpinner />
                           ) : (
-                            row.fideData ? <FideDataCell player={row.fideData} /> : null
+                            row.fideData ? (
+                              <FideDataCell 
+                                player={row.fideData} 
+                                searchTerm={`${row.firstName || ''}, ${row.lastName || ''}`.trim()}
+                                isValid={true}
+                                onInvalidate={(fideId) => handleInvalidateMatch(row.originalIndex, fideId)}
+                              />
+                            ) : null
                           )}
                         </td>
                       </tr>

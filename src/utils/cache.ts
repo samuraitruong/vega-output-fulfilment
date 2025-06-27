@@ -1,4 +1,5 @@
 const CACHE_PREFIX = 'fide-cache-';
+const INVALID_MATCHES_PREFIX = 'fide-invalid-';
 
 /**
  * Generates a cache key that is specific to the current month and the search term.
@@ -92,4 +93,54 @@ export function cleanupOldCache(): void {
             }
         }
     });
+}
+
+/**
+ * Stores an invalid match in a separate cache that doesn't expire monthly
+ */
+export function setInvalidMatch(searchTerm: string, fideId: string): void {
+    if (typeof window === 'undefined') return;
+    
+    const key = `${INVALID_MATCHES_PREFIX}${searchTerm.replace(/\s+/g, '').toLowerCase()}`;
+    try {
+        const invalidMatches = getInvalidMatches(searchTerm) || [];
+        if (!invalidMatches.includes(fideId)) {
+            invalidMatches.push(fideId);
+            localStorage.setItem(key, JSON.stringify(invalidMatches));
+        }
+    } catch (error) {
+        console.error("Error setting invalid match:", error);
+    }
+}
+
+/**
+ * Gets the list of invalid FIDE IDs for a given search term
+ */
+export function getInvalidMatches(searchTerm: string): string[] {
+    if (typeof window === 'undefined') return [];
+    
+    const key = `${INVALID_MATCHES_PREFIX}${searchTerm.replace(/\s+/g, '').toLowerCase()}`;
+    try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : [];
+    } catch (error) {
+        console.error("Error getting invalid matches:", error);
+        return [];
+    }
+}
+
+/**
+ * Removes an invalid match from the cache
+ */
+export function removeInvalidMatch(searchTerm: string, fideId: string): void {
+    if (typeof window === 'undefined') return;
+    
+    const key = `${INVALID_MATCHES_PREFIX}${searchTerm.replace(/\s+/g, '').toLowerCase()}`;
+    try {
+        const invalidMatches = getInvalidMatches(searchTerm);
+        const updatedMatches = invalidMatches.filter(id => id !== fideId);
+        localStorage.setItem(key, JSON.stringify(updatedMatches));
+    } catch (error) {
+        console.error("Error removing invalid match:", error);
+    }
 } 

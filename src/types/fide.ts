@@ -24,4 +24,6 @@ export interface ProcessedRow {
     searchOrder?: string;
     isAccurate?: boolean;
     originalIndex: number;
+    isValid?: boolean;
+    invalidReason?: string;
 } 

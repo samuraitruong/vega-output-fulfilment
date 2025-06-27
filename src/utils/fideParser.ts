@@ -1,5 +1,5 @@
 import { FidePlayer, ProcessedRow } from '@/types/fide';
-import { getCache, setCache } from './cache';
+import { getCache, setCache, getInvalidMatches } from './cache';
 
 export function parseFideTable(html: string): FidePlayer[] {
     if (typeof window === "undefined" || !window.DOMParser) {
@@ -83,11 +83,24 @@ export async function searchFidePlayer(
         for (const attempt of searchAttempts) {
             const players = await performFideSearch(attempt.term);
             if (players) {
+                // Filter out invalid matches and prioritize AUS federation
+                const invalidMatches = getInvalidMatches(searchTerm);
+                const validPlayers = players
+                    .filter(p => !invalidMatches.includes(p.fideId))
+                    .sort((a, b) => {
+                        // Prioritize AUS federation
+                        if (a.federation === 'AUS' && b.federation !== 'AUS') return -1;
+                        if (a.federation !== 'AUS' && b.federation === 'AUS') return 1;
+                        // Then sort by name
+                        return a.name.localeCompare(b.name);
+                    });
+
                 const result = {
-                    players,
-                    isAccurate: checkAccuracy(players),
+                    players: validPlayers,
+                    isAccurate: checkAccuracy(validPlayers),
                     searchOrder: attempt.order
                 };
+                
                 // Don't cache inaccurate results to allow for re-tries
                 if (result.isAccurate) {
                     setCache(searchTerm, result);

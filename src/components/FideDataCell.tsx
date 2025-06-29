@@ -1,6 +1,6 @@
 import React from 'react';
 import { FidePlayer } from '@/types/fide';
-import { setInvalidMatch, removeInvalidMatch } from '@/utils/cache';
+import { setInvalidMatch } from '@/utils/cache';
 
 interface FideDataCellProps {
   player: FidePlayer;

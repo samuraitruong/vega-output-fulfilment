@@ -25,10 +25,21 @@ const FideDataCell: React.FC<FideDataCellProps> = ({ player, searchTerm, isValid
     }
   };
 
+  const fideProfileUrl = `https://ratings.fide.com/profile/${fideId}`;
+
   return (
     <div className="text-xs relative group">
       <div className="font-bold text-gray-800 flex items-center justify-between gap-2">
-        <span>{name} ({federation})</span>
+        <a 
+          href={fideProfileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+          title={`View ${name}'s FIDE profile`}
+        >
+          {name}
+        </a>
+        <span className="text-gray-600">({federation})</span>
         {isValid && (
           <button
             onClick={handleInvalidate}
